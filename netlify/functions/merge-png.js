@@ -1,4 +1,4 @@
-// v1 Netlify Function (CommonJS)
+// v1 Netlify Function (CommonJS) — returns PNG binary
 const sharp = require("sharp");
 const { fetch } = require("undici");
 
@@ -13,7 +13,11 @@ exports.handler = async (event) => {
     return { statusCode: 204, headers: cors, body: "" };
   }
   if (event.httpMethod !== "POST") {
-    return { statusCode: 405, headers: { ...cors, "Content-Type": "application/json" }, body: JSON.stringify({ error: "Use POST" }) };
+    return {
+      statusCode: 405,
+      headers: { ...cors, "Content-Type": "application/json" },
+      body: JSON.stringify({ error: "Use POST" }),
+    };
   }
 
   try {
@@ -39,18 +43,24 @@ exports.handler = async (event) => {
 
     const base = sharp({ create: { width: W, height: H, channels: 4, background: bg } }).png();
     const out = await base.composite(layers).png().toBuffer();
-    const dataUrl = "data:image/png;base64," + out.toString("base64");
 
+    // IMPORTANT: for Netlify v1 binary responses
     return {
       statusCode: 200,
-      headers: { ...cors, "Content-Type": "application/json" },
-      body: JSON.stringify({ width: W, height: H, dataUrl }),
+      headers: {
+        ...cors,
+        "Content-Type": "image/png",
+        // Bubble uses this as the filename when “Use as: File”
+        "Content-Disposition": `inline; filename="merged-${Date.now()}.png"`
+      },
+      body: out.toString("base64"),
+      isBase64Encoded: true
     };
   } catch (e) {
     return {
       statusCode: 400,
       headers: { ...cors, "Content-Type": "application/json" },
-      body: JSON.stringify({ error: e.message || String(e) }),
+      body: JSON.stringify({ error: e.message || String(e) })
     };
   }
 };
