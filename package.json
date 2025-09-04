@@ -2,8 +2,5 @@
   "name": "merge-png-fn",
   "private": true,
   "version": "1.0.0",
-  "dependencies": {
-    "sharp": "^0.33.4",
-    "undici": "^6.19.8"
-  }
+  "dependencies": { "sharp": "^0.33.4", "undici": "^6.19.8" }
 }
