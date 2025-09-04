@@ -1,23 +1,13 @@
-// v1 Netlify Function (CommonJS) — returns PNG binary
+// netlify/functions/merge-png.js
 const sharp = require("sharp");
 const { fetch } = require("undici");
 
 exports.handler = async (event) => {
-  const cors = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-  };
-
   if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 204, headers: cors, body: "" };
+    return { statusCode: 204, headers: cors(), body: "" };
   }
   if (event.httpMethod !== "POST") {
-    return {
-      statusCode: 405,
-      headers: { ...cors, "Content-Type": "application/json" },
-      body: JSON.stringify({ error: "Use POST" }),
-    };
+    return { statusCode: 405, headers: { ...cors(), "Content-Type": "application/json" }, body: JSON.stringify({ error: "Use POST" }) };
   }
 
   try {
@@ -44,26 +34,28 @@ exports.handler = async (event) => {
     const base = sharp({ create: { width: W, height: H, channels: 4, background: bg } }).png();
     const out = await base.composite(layers).png().toBuffer();
 
-    // IMPORTANT: for Netlify v1 binary responses
     return {
       statusCode: 200,
       headers: {
-        ...cors,
+        ...cors(),
         "Content-Type": "image/png",
-        // Bubble uses this as the filename when “Use as: File”
         "Content-Disposition": `inline; filename="merged-${Date.now()}.png"`
       },
       body: out.toString("base64"),
-      isBase64Encoded: true
+      isBase64Encoded: true   // 🔑 tells Netlify this is binary, not text
     };
   } catch (e) {
-    return {
-      statusCode: 400,
-      headers: { ...cors, "Content-Type": "application/json" },
-      body: JSON.stringify({ error: e.message || String(e) })
-    };
+    return { statusCode: 400, headers: { ...cors(), "Content-Type": "application/json" }, body: JSON.stringify({ error: e.message || String(e) }) };
   }
 };
+
+function cors() {
+  return {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
+}
 
 async function sourceToBuffer(src) {
   if (typeof src === "string" && src.startsWith("data:image/")) {
